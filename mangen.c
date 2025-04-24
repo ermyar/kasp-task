@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#define VERSION "v1.0.1"
+#define VERSION "v1.0.2"
 
 #define print_err(msg, ret)                                                    \
   do {                                                                         \
@@ -19,6 +19,7 @@ static unsigned char hash[EVP_MAX_MD_SIZE];
 static char buf[BUFSIZ];
 static size_t baselen = 0;
 
+// calculate hash SHA256 sum using openssl lib
 static int get_file_hash(char *path, unsigned char *hash,
                          unsigned int *hash_len) {
   FILE *f;
@@ -51,6 +52,7 @@ static int get_file_hash(char *path, unsigned char *hash,
   return 0;
 }
 
+// dir walk to < path > directory. Current path has lenth len.
 static void dir_walk(size_t len) {
   DIR *dirp;
   struct dirent *dp;
@@ -59,6 +61,7 @@ static void dir_walk(size_t len) {
     print_err("opendir", );
   }
 
+  // walk only by regular files/symlinks
   for (;;) {
     dp = readdir(dirp);
 
@@ -96,6 +99,7 @@ static void dir_walk(size_t len) {
 
   rewinddir(dirp);
 
+  // recursively go to directories
   for (;;) {
     dp = readdir(dirp);
 
@@ -123,6 +127,7 @@ static void dir_walk(size_t len) {
 int main(int argc, char *argv[]) {
   int state = 0;
 
+  // parsing options
   while ((state = getopt(argc, argv, "vh")) != -1) {
     switch (state) {
     case 'v':
@@ -144,6 +149,8 @@ int main(int argc, char *argv[]) {
   }
 
   int ptr = optind;
+
+  // case when no DIR_PATH, then path is "."
   if (ptr == argc) {
     path[0] = '.';
     path[1] = '\0';
@@ -152,11 +159,13 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  // we must go only to one dir (if we want we can fix it easy)
   if (ptr + 1 < argc) {
     perror("more than 1 dir_path, only first will calculated");
   }
 
-  strcpy(path, argv[ptr]);
+  // our path is argv[optind]
+  strcpy(path, argv[optind]);
 
   struct stat st;
   if (stat(path, &st) == -1) {
