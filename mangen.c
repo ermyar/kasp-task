@@ -6,11 +6,11 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#define VERSION "v1.0.2"
+#define VERSION "v1.0.3"
 
 #define print_err(msg, ret)                                                    \
   do {                                                                         \
-    perror(msg);                                                               \
+    fprintf(stderr, msg "\n");                                                 \
     return ret;                                                                \
   } while (0)
 
@@ -78,22 +78,21 @@ static void dir_walk(size_t len) {
       path[len] = '/';
       strcpy(path + len + 1, dp->d_name);
 
-      printf("%s  :  ", path + baselen);
-
       unsigned int hash_len = 0;
       int err = get_file_hash(path, hash, &hash_len);
-
-      path[len] = '\0';
 
       if (err != 0) {
         printf("error while calc\n");
         continue;
       }
 
+      printf("%s  :  ", path + baselen);
       for (unsigned int i = 0; i < hash_len; ++i) {
         printf("%02x", hash[i]);
       }
       printf("\n");
+
+      path[len] = '\0';
     }
   }
 
