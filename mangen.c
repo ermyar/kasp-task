@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#define VERSION "v1.0.0"
+#define VERSION "v1.0.1"
 
 #define print_err(msg, ret)                                                    \
   do {                                                                         \
@@ -52,8 +52,6 @@ static int get_file_hash(char *path, unsigned char *hash,
 }
 
 static void dir_walk(size_t len) {
-  struct stat stat_var;
-
   DIR *dirp;
   struct dirent *dp;
 
