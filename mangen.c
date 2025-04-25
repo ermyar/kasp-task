@@ -2,7 +2,7 @@
 #include "utils.h"
 #include <unistd.h>
 
-#define VERSION "v1.1.2"
+#define VERSION "v1.1.3"
 
 pcre *re = NULL;
 

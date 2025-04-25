@@ -5,6 +5,12 @@ extern pcre *re;
 
 // print version message
 void version_message() {
+  FILE *check_git = fopen(".git/HEAD", "r");
+  if (check_git == NULL) {
+    return;
+  }
+  fclose(check_git);
+
   FILE *pipe = popen("git rev-parse HEAD", "r");
   if (pipe == NULL) {
     return;
