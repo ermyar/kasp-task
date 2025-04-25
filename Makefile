@@ -1,7 +1,7 @@
 all: build test clean
 
 build: mangen.c Makefile
-	gcc mangen.c -o mangen -lssl -lcrypto -Wall -Werror -fsanitize=address
+	gcc mangen.c -o mangen -Wall -Werror -fsanitize=address -lpcre -lssl -lcrypto
 
 
 test: build

@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 import random
+import re
+
 
 def run_test(fn):
 	with tempfile.TemporaryDirectory() as tmpdir:
@@ -27,6 +29,12 @@ def get_answer(options):
 	for dirpath, _, filenames in os.walk(options[0]):
 		for f in filenames:
 			fname = os.path.join(dirpath, f)
+
+			if len(options) > 1:
+				match = re.fullmatch(options[1], f)
+
+				if match:
+					continue
 
 			with open(fname, "rb") as bin:
 				bytes = bin.read()
@@ -106,7 +114,39 @@ def check_failture_not_dir(tmpdir):
 
 	return [nfile], checker
 
+
+def check_pattern(tmpdir):
+	for i in range(1000):
+		fname = os.path.join(tmpdir, f"file_{i}")
+
+		with open(fname, "wb") as ff:
+			ln = random.randint(100, 1000)
+			ff.write(os.urandom(ln))
+
+	pattern = 'file_..'
+
+	def checker(returncode, stdout, stderr):
+		assert returncode == 0, f"{stderr}\n{stdout}"
+		check_ans([tmpdir, pattern], stdout)
+
+	return [tmpdir, '-e', pattern], checker
+
+
+
+def check_invalid_pattern(tmpdir):
+	pattern = '([a-z]+'
+
+	def checker(returncode, stdout, stderr):
+		assert returncode != 0, f"{stdout}, {stderr}"
+		assert 'missing )' in stderr
+
+	return [tmpdir, '-e', pattern], checker
+
+
+
 run_test(check_no_flag)
 run_test(check_small_dir)
 run_test(check_big_dir)
 run_test(check_failture_not_dir)
+run_test(check_pattern)
+run_test(check_invalid_pattern)

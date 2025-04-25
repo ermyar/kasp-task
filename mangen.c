@@ -1,12 +1,14 @@
 #include <dirent.h>
 #include <openssl/evp.h>
 #include <openssl/types.h>
+#include <pcre.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#define VERSION "v1.0.3"
+
+#define VERSION "v1.1.0"
 
 #define print_err(msg, ret)                                                    \
   do {                                                                         \
@@ -18,6 +20,8 @@ static char path[BUFSIZ];
 static unsigned char hash[EVP_MAX_MD_SIZE];
 static char buf[BUFSIZ];
 static size_t baselen = 0;
+static pcre *re = NULL;
+static int ovector[FILENAME_MAX];
 
 // calculate hash SHA256 sum using openssl lib
 static int get_file_hash(char *path, unsigned char *hash,
@@ -52,7 +56,7 @@ static int get_file_hash(char *path, unsigned char *hash,
   return 0;
 }
 
-// dir walk to < path > directory. Current path has lenth len.
+// dir walk to < path > directory. Current path has length len.
 static void dir_walk(size_t len) {
   DIR *dirp;
   struct dirent *dp;
@@ -74,6 +78,20 @@ static void dir_walk(size_t len) {
     }
 
     if (dp->d_type == DT_REG || dp->d_type == DT_LNK) {
+
+    	// check if filename match given regex
+      if (re != NULL) {
+        size_t filenamelen = strlen(dp->d_name);
+        int count = pcre_exec(re, NULL, dp->d_name, filenamelen, 0, 0, ovector,
+                              FILENAME_MAX);
+
+        if (count > 0) {
+        	// if name match we skip this file
+          if (ovector[0] == 0 && ovector[1] == filenamelen) {
+            continue;
+          }
+        }
+      }
 
       path[len] = '/';
       strcpy(path + len + 1, dp->d_name);
@@ -123,30 +141,8 @@ static void dir_walk(size_t len) {
   }
 }
 
-int main(int argc, char *argv[]) {
-  int state = 0;
-
-  // parsing options
-  while ((state = getopt(argc, argv, "vh")) != -1) {
-    switch (state) {
-    case 'v':
-      printf("mangen %s 2025 by Ermachkov Yaroslav\n", VERSION);
-      return 0;
-    case 'h':
-      printf("Usage:  mangen [DIR_PATH] [OPTIONS]\n"
-             "Generate and print manifest of directory in format:\n\n"
-             "    <relative path to file from DIR_PATH> : <hash-sum>\n"
-             "\nIf no DIR_PATH, working directoty is current. \n\n"
-             "Flags description:\n"
-             "    -h\t Print usage and this help message and exit.\n"
-             "    -v\t Print version and exit.\n");
-      return 0;
-    case '?':
-      printf("found wrong option!\n---- %s ----\n", optarg);
-      break;
-    }
-  }
-
+// initialize and start compution (dir_walk)
+int init(int argc, char *argv[]) {
   int ptr = optind;
 
   // case when no DIR_PATH, then path is "."
@@ -178,4 +174,78 @@ int main(int argc, char *argv[]) {
   baselen = len + 1;
   dir_walk(len);
   return 0;
+}
+
+// print help message with these options
+void help_message() {
+  printf("Usage:  mangen [DIR_PATH] [OPTIONS]\n"
+         "Generate and print manifest of directory in format:\n\n"
+         "    <relative path to file from DIR_PATH> : <hash-sum>\n"
+         "\nIf no DIR_PATH, working directoty is current. \n\n"
+         "Flags description:\n");
+
+  struct options {
+    char *opt;
+    char *desc;
+  } list[] = {{"-e pattern", "Except file with name match given pattern."},
+              {"-h", "Print usage and this help message and exit."},
+              {"-v", "Print version and exit."}};
+
+  size_t len = sizeof(list) / sizeof(list[0]);
+  int padding = 0;
+
+  for (size_t ind = 0; ind < len; ++ind) {
+    int len = strlen(list[ind].opt);
+    padding = (len > padding) ? len : padding;
+  }
+
+  for (size_t ind = 0; ind < len; ++ind) {
+    printf("  %-*s   %s\n", padding, list[ind].opt, list[ind].desc);
+  }
+}
+
+// have to free pointer to re
+static void clean_pcre() { free(re); }
+
+// compile regex by pcrelib
+static int create_pcre(char *ex_pattern) {
+  int options = 0;
+  const char *errors;
+  int erroffset;
+  re = pcre_compile(ex_pattern, options, &errors, &erroffset, NULL);
+
+  if (re == NULL) {
+    fprintf(stderr, "%s\n", errors);
+    print_err("wrong pattern", -1);
+  }
+
+  atexit(clean_pcre);
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  int state = 0;
+
+  // parsing options
+  while ((state = getopt(argc, argv, "vhe:")) != -1) {
+    switch (state) {
+    case 'e':
+      int err = create_pcre(optarg);
+      if (err != 0) {
+        return err;
+      }
+      break;
+    case 'v':
+      printf("mangen %s 2025 by Ermachkov Yaroslav\n", VERSION);
+      return 0;
+    case 'h':
+      help_message();
+      return 0;
+    case '?':
+      printf("found wrong option!\n---- %s ----\n", optarg);
+      break;
+    }
+  }
+
+  return init(argc, argv);
 }
