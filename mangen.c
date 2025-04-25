@@ -8,7 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#define VERSION "v1.1.0"
+#define VERSION "v1.1.1"
+#define COMMIT_HASH_LEN 41
 
 #define print_err(msg, ret)                                                    \
   do {                                                                         \
@@ -79,14 +80,14 @@ static void dir_walk(size_t len) {
 
     if (dp->d_type == DT_REG || dp->d_type == DT_LNK) {
 
-    	// check if filename match given regex
+      // check if filename match given regex
       if (re != NULL) {
         size_t filenamelen = strlen(dp->d_name);
         int count = pcre_exec(re, NULL, dp->d_name, filenamelen, 0, 0, ovector,
                               FILENAME_MAX);
 
         if (count > 0) {
-        	// if name match we skip this file
+          // if name match we skip this file
           if (ovector[0] == 0 && ovector[1] == filenamelen) {
             continue;
           }
@@ -176,6 +177,24 @@ int init(int argc, char *argv[]) {
   return 0;
 }
 
+// print version message
+void version_message() {
+  FILE *pipe = popen("git rev-parse HEAD", "r");
+  if (pipe == NULL) {
+    return;
+  }
+  char commit_hash[COMMIT_HASH_LEN];
+  if (fgets(commit_hash, COMMIT_HASH_LEN, pipe) == NULL) {
+    pclose(pipe);
+    return;
+  }
+
+  commit_hash[COMMIT_HASH_LEN - 1] = '\0';
+  printf("git commit hash: %s\n", commit_hash);
+
+  pclose(pipe);
+}
+
 // print help message with these options
 void help_message() {
   printf("Usage:  mangen [DIR_PATH] [OPTIONS]\n"
@@ -237,6 +256,7 @@ int main(int argc, char *argv[]) {
       break;
     case 'v':
       printf("mangen %s 2025 by Ermachkov Yaroslav\n", VERSION);
+      version_message();
       return 0;
     case 'h':
       help_message();
