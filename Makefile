@@ -1,10 +1,16 @@
-all: build test clean
+CC = gcc
+CFLAGS = -Wall -Werror -fsanitize=address -O3
+CLIB = -lcrypto -lpcre -lssl
+TARGET = mangen
+OBJECTS = mangen.c utils.c calc.c
+HEADERS = utils.h calc.h
 
-build: mangen.c Makefile
-	gcc mangen.c -o mangen -Wall -Werror -fsanitize=address -lpcre -lssl -lcrypto
+all: $(TARGET)
 
+mangen: $(OBJECTS) $(HEADERS)
+	$(CC) $(OBJECTS) -o $(TARGET) $(CFLAGS) $(CLIB)
 
-test: build
+test: $(TARGET)
 	python3 test_mangen.py ./mangen
 
 clean:

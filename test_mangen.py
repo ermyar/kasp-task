@@ -133,6 +133,23 @@ def check_pattern(tmpdir):
 
 
 
+def check_big_const_filename(tmpdir):
+	for i in range(1000):
+		fname = os.path.join(tmpdir, f"file_{i}")
+
+		with open(fname, "wb") as ff:
+			ln = random.randint(1000, 10000)
+			ff.write(os.urandom(ln))
+
+	pattern = 'file_777'
+
+	def checker(returncode, stdout, stderr):
+		assert returncode == 0, f"{stderr}\n{stdout}"
+		check_ans([tmpdir, pattern], stdout)
+
+	return [tmpdir, '-e', pattern], checker
+
+
 def check_invalid_pattern(tmpdir):
 	pattern = '([a-z]+'
 
@@ -148,5 +165,6 @@ run_test(check_no_flag)
 run_test(check_small_dir)
 run_test(check_big_dir)
 run_test(check_failture_not_dir)
+run_test(check_big_const_filename)
 run_test(check_pattern)
 run_test(check_invalid_pattern)
